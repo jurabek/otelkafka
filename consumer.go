@@ -17,7 +17,8 @@ type Consumer struct {
 	prev trace.Span
 }
 
-func WrapConsumer(c *kafka.Consumer, cfg config) *Consumer {
+func WrapConsumer(c *kafka.Consumer, opts ...Option) *Consumer {
+	cfg := newConfig(opts...)
 	return &Consumer{Consumer: c, cfg: cfg}
 }
 
@@ -73,11 +74,12 @@ func (c *Consumer) startSpan(msg *kafka.Message) trace.Span {
 		semconv.MessagingSystemKafka,
 		semconv.MessagingKafkaMessageOffset(int(msg.TopicPartition.Offset)),
 		semconv.MessagingKafkaConsumerGroup(c.cfg.consumerGroupID),
+		semconv.MessagingKafkaMessageKey(string(msg.Key)),
+
 		semconv.ServerAddress(c.cfg.bootstrapServers),
 		semconv.MessagingDestinationName(*msg.TopicPartition.Topic),
 		semconv.MessagingMessageID(strconv.FormatInt(int64(msg.TopicPartition.Offset), 10)),
 		semconv.MessagingDestinationPartitionID(strconv.Itoa(int(msg.TopicPartition.Partition))),
-		semconv.MessagingKafkaMessageKey(string(msg.Key)),
 		semconv.MessagingMessageBodySize(getMsgSize(msg)),
 	}
 	opts := []trace.SpanStartOption{

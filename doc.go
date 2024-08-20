@@ -19,5 +19,7 @@
 // Context propagation only works on Kafka versions higher than 0.11.0.0 which supports record headers.
 // (https://archive.apache.org/dist/kafka/0.11.0.0/RELEASE_NOTES.html)
 //
-// Based on: https://github.com/DataDog/dd-trace-go/tree/main/contrib/confluentinc/confluent-kafka-go/kafka.v2
+// Based on:
+// https://github.com/DataDog/dd-trace-go/tree/main/contrib/confluentinc/confluent-kafka-go/kafka.v2
+// https://github.com/dnwe/otelsarama
 package otelkafka

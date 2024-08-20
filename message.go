@@ -27,7 +27,7 @@ func (c MessageCarrier) Get(key string) string {
 func (c MessageCarrier) Set(key string, value string) {
 	// Ensure uniqueness of keys
 	for i := 0; i < len(c.msg.Headers); i++ {
-		if string(c.msg.Headers[i].Key) == key {
+		if c.msg.Headers[i].Key == key {
 			c.msg.Headers = append(c.msg.Headers[:i], c.msg.Headers[i+1:]...)
 			i--
 		}
