@@ -17,9 +17,22 @@ type Consumer struct {
 	prev trace.Span
 }
 
-func WrapConsumer(c *kafka.Consumer, opts ...Option) *Consumer {
+func NewConsumer(conf *kafka.ConfigMap, opts ...Option) (*Consumer, error) {
+	c, err := kafka.NewConsumer(conf)
+	if err != nil {
+		return nil, err
+	}
 	cfg := newConfig(opts...)
-	return &Consumer{Consumer: c, cfg: cfg}
+	return &Consumer{Consumer: c, cfg: cfg}, nil
+}
+
+// WrapConsumer wraps a kafka.Consumer so that any consumed events are traced.
+func WrapConsumer(c *kafka.Consumer, opts ...Option) *Consumer {
+	wrapped := &Consumer{
+		Consumer: c,
+		cfg:      newConfig(opts...),
+	}
+	return wrapped
 }
 
 func (c *Consumer) Pool(timeout int) kafka.Event {

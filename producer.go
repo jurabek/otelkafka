@@ -14,9 +14,13 @@ type Producer struct {
 	cfg config
 }
 
-func WrapProducer(p *kafka.Producer, opts ...Option) *Producer {
+func NewProducer(conf *kafka.ConfigMap, opts ...Option) (*Producer, error) {
+	p, err := kafka.NewProducer(conf)
+	if err != nil {
+		return nil, err
+	}
 	cfg := newConfig(opts...)
-	return &Producer{Producer: p, cfg: cfg}
+	return &Producer{Producer: p, cfg: cfg}, nil
 }
 
 // Produce calls the underlying Producer.Produce and traces the request.
