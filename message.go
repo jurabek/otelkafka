@@ -45,3 +45,10 @@ func (c MessageCarrier) Keys() []string {
 	}
 	return out
 }
+
+func getMsgSize(msg *kafka.Message) (size int) {
+	for _, header := range msg.Headers {
+		size += len(header.Key) + len(header.Value)
+	}
+	return size + len(msg.Value) + len(msg.Key)
+}

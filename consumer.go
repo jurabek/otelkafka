@@ -22,6 +22,7 @@ func NewConsumer(conf *kafka.ConfigMap, opts ...Option) (*Consumer, error) {
 	if err != nil {
 		return nil, err
 	}
+	opts = append(opts, withConfig(conf))
 	cfg := newConfig(opts...)
 	return &Consumer{Consumer: c, cfg: cfg}, nil
 }
@@ -35,30 +36,34 @@ func WrapConsumer(c *kafka.Consumer, opts ...Option) *Consumer {
 	return wrapped
 }
 
-func (c *Consumer) Pool(timeout int) kafka.Event {
+func (c *Consumer) Poll(timeoutMs int) (event kafka.Event) {
 	if c.prev != nil {
 		c.prev.End()
 	}
-	event := c.Consumer.Poll(timeout)
-	switch e := event.(type) {
+	e := c.Consumer.Poll(timeoutMs)
+	switch e := e.(type) {
 	case *kafka.Message:
 		span := c.startSpan(e)
+		// latest span is stored to be closed when the next message is polled or when the consumer is closed
 		c.prev = span
 	}
 
-	return event
+	return e
 }
 
 // ReadMessage polls the consumer for a message. Message will be traced.
 func (c *Consumer) ReadMessage(timeout time.Duration) (*kafka.Message, error) {
 	if c.prev != nil {
-		c.prev.End()
+		if c.prev.IsRecording() {
+			c.prev.End()
+		}
 		c.prev = nil
 	}
 	msg, err := c.Consumer.ReadMessage(timeout)
 	if err != nil {
 		return nil, err
 	}
+	// latest span is stored to be closed when the next message is polled or when the consumer is closed
 	c.prev = c.startSpan(msg)
 	return msg, nil
 }
@@ -71,7 +76,9 @@ func (c *Consumer) Close() error {
 	// not enabled, because otherwise there would be a data race from the
 	// consuming goroutine.
 	if c.prev != nil {
-		c.prev.End()
+		if c.prev.IsRecording() {
+			c.prev.End()
+		}
 		c.prev = nil
 	}
 	return err
@@ -95,6 +102,11 @@ func (c *Consumer) startSpan(msg *kafka.Message) trace.Span {
 		semconv.MessagingDestinationPartitionID(strconv.Itoa(int(msg.TopicPartition.Partition))),
 		semconv.MessagingMessageBodySize(getMsgSize(msg)),
 	}
+
+	if c.cfg.attributeInjectFunc != nil {
+		attrs = append(attrs, c.cfg.attributeInjectFunc(msg)...)
+	}
+
 	opts := []trace.SpanStartOption{
 		trace.WithAttributes(attrs...),
 		trace.WithSpanKind(trace.SpanKindConsumer),
@@ -104,11 +116,4 @@ func (c *Consumer) startSpan(msg *kafka.Message) trace.Span {
 	// Inject current span context, so consumers can use it to propagate span.
 	c.cfg.Propagators.Inject(newCtx, carrier)
 	return span
-}
-
-func getMsgSize(msg *kafka.Message) (size int) {
-	for _, header := range msg.Headers {
-		size += len(header.Key) + len(header.Value)
-	}
-	return size + len(msg.Value) + len(msg.Key)
 }

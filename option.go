@@ -3,6 +3,7 @@ package otelkafka
 import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"net"
@@ -17,6 +18,8 @@ type config struct {
 	Tracer           trace.Tracer
 	consumerGroupID  string
 	bootstrapServers string
+
+	attributeInjectFunc func(msg *kafka.Message) []attribute.KeyValue
 }
 
 // newConfig returns a config with all Options set.
@@ -69,8 +72,14 @@ func WithPropagators(propagators propagation.TextMapPropagator) Option {
 	})
 }
 
-// WithConfig extracts the config information from kafka.ConfigMap for the client
-func WithConfig(cg *kafka.ConfigMap) Option {
+func WithCustomAttributeInjector(fn func(msg *kafka.Message) []attribute.KeyValue) Option {
+	return optionFunc(func(cfg *config) {
+		cfg.attributeInjectFunc = fn
+	})
+}
+
+// withConfig extracts the config information from kafka.ConfigMap for the client
+func withConfig(cg *kafka.ConfigMap) Option {
 	return optionFunc(func(cfg *config) {
 		if groupID, err := cg.Get("group.id", ""); err == nil {
 			cfg.consumerGroupID = groupID.(string)

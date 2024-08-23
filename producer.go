@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
+// Producer supports only tracing mechanism for Produce method over deprecated ProduceChannel method
 type Producer struct {
 	*kafka.Producer
 	cfg config
@@ -19,6 +21,7 @@ func NewProducer(conf *kafka.ConfigMap, opts ...Option) (*Producer, error) {
 	if err != nil {
 		return nil, err
 	}
+	opts = append(opts, withConfig(conf))
 	cfg := newConfig(opts...)
 	return &Producer{Producer: p, cfg: cfg}, nil
 }
@@ -33,13 +36,13 @@ func (p *Producer) Produce(msg *kafka.Message, deliveryChan chan kafka.Event) er
 		oldDeliveryChan := deliveryChan
 		deliveryChan = make(chan kafka.Event)
 		go func() {
-			var err error
 			evt := <-deliveryChan
-			if msg, ok := evt.(*kafka.Message); ok {
-				// delivery errors are returned via TopicPartition.Error
-				err = msg.TopicPartition.Error
+			if resMsg, ok := evt.(*kafka.Message); ok {
+				if err := resMsg.TopicPartition.Error; err != nil {
+					span.RecordError(resMsg.TopicPartition.Error)
+					span.SetStatus(codes.Error, err.Error())
+				}
 			}
-			span.RecordError(err)
 			span.End()
 			oldDeliveryChan <- evt
 		}()
