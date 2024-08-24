@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	"github.com/jurabek/otelkafka"
+	"github.com/jurabek/otelkafka/example"
 	"log"
-	"opentelemetry.io/contrib/instrumentation/github.com/confluentinc/confluent-kafka-go/v2/otelkafka"
-	"opentelemetry.io/contrib/instrumentation/github.com/confluentinc/confluent-kafka-go/v2/otelkafka/example"
 	"os"
 	"os/signal"
 )

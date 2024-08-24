@@ -1,4 +1,4 @@
-module opentelemetry.io/contrib/instrumentation/github.com/confluentinc/confluent-kafka-go/v2/otelkafka
+module github.com/jurabek/otelkafka
 
 go 1.22.5
 
