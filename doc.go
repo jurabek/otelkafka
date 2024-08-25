@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package otelkafka instruments the github.com/confluentinc/confluent-kafka-go/v2 package.
+// Package otelkafka instruments the github.com/confluentinc/confluent-kafka-go/v2 package and supports function based Producer and Consumer
 //
 // The consumer's span will be created as a child of the producer's span.
 //
@@ -21,5 +21,4 @@
 //
 // Based on:
 // https://github.com/DataDog/dd-trace-go/tree/main/contrib/confluentinc/confluent-kafka-go/kafka.v2
-// https://github.com/dnwe/otelsarama
 package otelkafka

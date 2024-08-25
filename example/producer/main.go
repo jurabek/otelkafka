@@ -9,6 +9,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"log"
 	"os"
+	"time"
 )
 
 func main() {
@@ -37,31 +38,35 @@ func main() {
 	ctx, span := tr.Start(context.Background(), "produce message")
 	defer span.End()
 
-	// Optional delivery channel, if not specified the Producer object's
-	// .Events channel is used.
 	deliveryChan := make(chan kafka.Event)
-	message := &kafka.Message{
-		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
-		Value:          []byte("Hello Go!"),
-		Key:            []byte("message-key"),
-		Headers:        []kafka.Header{{Key: "myTestHeader", Value: []byte("header values are binary")}},
-	}
-	otel.GetTextMapPropagator().Inject(ctx, otelkafka.NewMessageCarrier(message))
 
-	err = p.Produce(message, deliveryChan)
-	if err != nil {
-		fmt.Printf("Produce failed: %v\n", err)
-		os.Exit(1)
-	}
+	for i := 0; i < 500; i++ {
+		// Optional delivery channel, if not specified the Producer object's
+		// .Events channel is used.
+		message := &kafka.Message{
+			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+			Value:          []byte(fmt.Sprintf("Hello Go #%d", i)),
+			Key:            []byte("message-key"),
+			Headers:        []kafka.Header{{Key: "myTestHeader", Value: []byte("header values are binary")}},
+		}
+		otel.GetTextMapPropagator().Inject(ctx, otelkafka.NewMessageCarrier(message))
 
-	e := <-deliveryChan
-	m := e.(*kafka.Message)
+		err = p.Produce(message, deliveryChan)
+		if err != nil {
+			fmt.Printf("Produce failed: %v\n", err)
+			os.Exit(1)
+		}
 
-	if m.TopicPartition.Error != nil {
-		fmt.Printf("Delivery failed: %v\n", m.TopicPartition.Error)
-	} else {
-		fmt.Printf("Delivered message to topic %s [%d] at offset %v\n",
-			*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset)
+		e := <-deliveryChan
+		m := e.(*kafka.Message)
+
+		if m.TopicPartition.Error != nil {
+			fmt.Printf("Delivery failed: %v\n", m.TopicPartition.Error)
+		} else {
+			fmt.Printf("Delivered message to topic %s [%d] at offset %v\n",
+				*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset)
+		}
+		time.Sleep(5 * time.Second)
 	}
 
 	close(deliveryChan)
