@@ -2,19 +2,25 @@ package otelkafka
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	"github.com/jurabek/otelkafka/metrics"
 	"go.opentelemetry.io/otel/attribute"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.opentelemetry.io/otel/trace"
-	"strconv"
-	"time"
 )
 
 type Consumer struct {
 	*kafka.Consumer
 	cfg  config
 	prev trace.Span
+
+	statsEnabled bool
+	metrics      *metrics.TopLevelMetrics
 }
 
 func NewConsumer(conf *kafka.ConfigMap, opts ...Option) (*Consumer, error) {
@@ -24,7 +30,18 @@ func NewConsumer(conf *kafka.ConfigMap, opts ...Option) (*Consumer, error) {
 	}
 	opts = append(opts, withConfig(conf))
 	cfg := newConfig(opts...)
-	return &Consumer{Consumer: c, cfg: cfg}, nil
+
+	var statsEnabled bool
+	var statsMetrics *metrics.TopLevelMetrics
+	if _, err := conf.Get("statistics.interval.ms", ""); err == nil {
+		statsEnabled = true
+		statsMetrics, err = metrics.GetTopLevelMetrics(cfg.Meter)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get top level metrics: %w", err)
+		}
+	}
+
+	return &Consumer{Consumer: c, cfg: cfg, statsEnabled: statsEnabled, metrics: statsMetrics}, nil
 }
 
 // WrapConsumer wraps a kafka.Consumer so that any consumed events are traced.
@@ -46,6 +63,22 @@ func (c *Consumer) Poll(timeoutMs int) (event kafka.Event) {
 		span := c.startSpan(e)
 		// latest span is stored to be closed when the next message is polled or when the consumer is closed
 		c.prev = span
+	case *kafka.Stats:
+		if !c.statsEnabled {
+			return e
+		}
+		// Stats events are emitted as JSON (as string).
+		// Either directly forward the JSON to your
+		// statistics collector, or convert it to a
+		// map to extract fields of interest.
+		// The definition of the statistics JSON
+		// object can be found here:
+		// https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
+		var stats metrics.Stats
+		json.Unmarshal([]byte(e.String()), &stats)
+		// write stats into file
+		// metrics.StatsToMetrics(stats, *c.metrics, c.cfg.Meter, metrics.Cfg{})
+
 	}
 
 	return e
@@ -88,6 +121,11 @@ func (c *Consumer) startSpan(msg *kafka.Message) trace.Span {
 	carrier := NewMessageCarrier(msg)
 	parentSpanContext := c.cfg.Propagators.Extract(context.Background(), carrier)
 
+	var topicName string
+	if msg.TopicPartition.Topic != nil {
+		topicName = *msg.TopicPartition.Topic
+	}
+
 	// Create a span.
 	attrs := []attribute.KeyValue{
 		semconv.MessagingOperationTypeReceive,
@@ -97,7 +135,7 @@ func (c *Consumer) startSpan(msg *kafka.Message) trace.Span {
 		semconv.MessagingKafkaMessageKey(string(msg.Key)),
 
 		semconv.ServerAddress(c.cfg.bootstrapServers),
-		semconv.MessagingDestinationName(*msg.TopicPartition.Topic),
+		semconv.MessagingDestinationName(topicName),
 		semconv.MessagingMessageID(strconv.FormatInt(int64(msg.TopicPartition.Offset), 10)),
 		semconv.MessagingDestinationPartitionID(strconv.Itoa(int(msg.TopicPartition.Partition))),
 		semconv.MessagingMessageBodySize(getMsgSize(msg)),
@@ -106,12 +144,11 @@ func (c *Consumer) startSpan(msg *kafka.Message) trace.Span {
 	if c.cfg.attributeInjectFunc != nil {
 		attrs = append(attrs, c.cfg.attributeInjectFunc(msg)...)
 	}
-
 	opts := []trace.SpanStartOption{
 		trace.WithAttributes(attrs...),
 		trace.WithSpanKind(trace.SpanKindConsumer),
 	}
-	newCtx, span := c.cfg.Tracer.Start(parentSpanContext, fmt.Sprintf("%v receive", msg.TopicPartition.Topic), opts...)
+	newCtx, span := c.cfg.Tracer.Start(parentSpanContext, fmt.Sprintf("%s receive", topicName), opts...)
 
 	// Inject current span context, so consumers can use it to propagate span.
 	c.cfg.Propagators.Inject(newCtx, carrier)

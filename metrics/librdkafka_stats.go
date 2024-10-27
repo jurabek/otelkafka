@@ -1,30 +1,51 @@
 package metrics
 
+import (
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+)
+
 type Stats struct {
-	Name             string  `json:"name"`
-	ClientID         string  `json:"client_id"`
-	Type             string  `json:"type"`
-	Ts               int64   `json:"ts"`
-	Time             int64   `json:"time"`
-	Age              int64   `json:"age"`
-	Replyq           int64   `json:"replyq"`
-	MsgCnt           int64   `json:"msg_cnt"`
-	MsgSize          int64   `json:"msg_size"`
-	MsgMax           int64   `json:"msg_max"`
-	MsgSizeMax       int64   `json:"msg_size_max"`
-	SimpleCnt        int64   `json:"simple_cnt"`
-	MetadataCacheCnt int64   `json:"metadata_cache_cnt"`
-	Brokers          Brokers `json:"brokers"`
-	Topics           Topics  `json:"topics"`
-	Cgrp             Cgrp    `json:"cgrp"`
-	Tx               int64   `json:"tx"`
-	TxBytes          int64   `json:"tx_bytes"`
-	Rx               int64   `json:"rx"`
-	RxBytes          int64   `json:"rx_bytes"`
-	Txmsgs           int64   `json:"txmsgs"`
-	TxmsgBytes       int64   `json:"txmsg_bytes"`
-	Rxmsgs           int64   `json:"rxmsgs"`
-	RxmsgBytes       int64   `json:"rxmsg_bytes"`
+	Name     string `json:"name"`
+	ClientID string `json:"client_id"`
+	Type     string `json:"type"`
+	Ts       int64  `json:"ts"`
+	Time     int64  `json:"time"`
+	Age      int64  `json:"age"`
+	Replyq   int64  `json:"replyq"`
+	MsgCnt   int64  `json:"msg_cnt"`
+	MsgSize  int64  `json:"msg_size"`
+
+	Tx         int64 `json:"tx"`
+	TxBytes    int64 `json:"tx_bytes"`
+	Rx         int64 `json:"rx"`
+	RxBytes    int64 `json:"rx_bytes"`
+	Txmsgs     int64 `json:"txmsgs"`
+	TxmsgBytes int64 `json:"txmsg_bytes"`
+	Rxmsgs     int64 `json:"rxmsgs"`
+	RxmsgBytes int64 `json:"rxmsg_bytes"`
+	// Brokers          Brokers `json:"brokers"`
+	// Topics           Topics  `json:"topics"`
+	// Cgrp             Cgrp    `json:"cgrp"`
+}
+
+type Cfg struct {
+	Attributes []attribute.KeyValue
+}
+
+func StatsToMetrics(stats Stats, topLevelMetrics TopLevelMetrics, observer metric.Observer, cfg Cfg) {
+	observer.ObserveInt64(topLevelMetrics.ClientAgeGauge, stats.Age, metric.WithAttributes(cfg.Attributes...))
+	observer.ObserveInt64(topLevelMetrics.ReplyQueueGauge, stats.Replyq, metric.WithAttributes(cfg.Attributes...))
+	observer.ObserveInt64(topLevelMetrics.MsgCountGauge, stats.MsgCnt, metric.WithAttributes(cfg.Attributes...))
+	observer.ObserveInt64(topLevelMetrics.MsgSizeGauge, stats.MsgSize, metric.WithAttributes(cfg.Attributes...))
+	observer.ObserveInt64(topLevelMetrics.RequestsSentTotal, stats.Tx, metric.WithAttributes(cfg.Attributes...))
+	observer.ObserveInt64(topLevelMetrics.RequestSentBytesTotal, stats.TxBytes, metric.WithAttributes(cfg.Attributes...))
+	observer.ObserveInt64(topLevelMetrics.ResponseReceievedTotal, stats.Rx, metric.WithAttributes(cfg.Attributes...))
+	observer.ObserveInt64(topLevelMetrics.ResponseReceievedBytesTotal, stats.RxBytes, metric.WithAttributes(cfg.Attributes...))
+	observer.ObserveInt64(topLevelMetrics.TotalNumberMessagesProduced, stats.Txmsgs, metric.WithAttributes(cfg.Attributes...))
+	observer.ObserveInt64(topLevelMetrics.TotalNumberOfMessagesProducedBytes, stats.TxmsgBytes, metric.WithAttributes(cfg.Attributes...))
+	observer.ObserveInt64(topLevelMetrics.TotalNumberOfMessagesConsumed, stats.Rxmsgs, metric.WithAttributes(cfg.Attributes...))
+	observer.ObserveInt64(topLevelMetrics.TotalNumberOfMessagesConsumedBytes, stats.RxmsgBytes, metric.WithAttributes(cfg.Attributes...))
 }
 
 type Brokers struct {

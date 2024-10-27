@@ -3,6 +3,7 @@ package otelkafka
 import (
 	"context"
 	"fmt"
+
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -69,11 +70,16 @@ func (p *Producer) startSpan(msg *kafka.Message) trace.Span {
 	carrier := NewMessageCarrier(msg)
 	ctx := p.cfg.Propagators.Extract(context.Background(), carrier)
 
+	var topicName string
+	if msg.TopicPartition.Topic != nil {
+		topicName = *msg.TopicPartition.Topic
+	}
+
 	attr := []attribute.KeyValue{
 		semconv.MessagingOperationTypePublish,
 		semconv.MessagingSystemKafka,
 		semconv.ServerAddress(p.cfg.bootstrapServers),
-		semconv.MessagingDestinationName(*msg.TopicPartition.Topic),
+		semconv.MessagingDestinationName(topicName),
 		semconv.MessagingKafkaMessageKey(string(msg.Key)),
 		semconv.MessagingMessageBodySize(getMsgSize(msg)),
 	}
@@ -83,7 +89,7 @@ func (p *Producer) startSpan(msg *kafka.Message) trace.Span {
 		trace.WithSpanKind(trace.SpanKindProducer),
 	}
 
-	ctx, span := p.cfg.Tracer.Start(ctx, fmt.Sprintf("%s publish", *msg.TopicPartition.Topic), opts...)
+	ctx, span := p.cfg.Tracer.Start(ctx, fmt.Sprintf("%s publish", topicName), opts...)
 	p.cfg.Propagators.Inject(ctx, carrier)
 	return span
 

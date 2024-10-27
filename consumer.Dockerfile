@@ -3,8 +3,6 @@ FROM golang:1.22-alpine AS builder
 ENV PATH="/go/bin:${PATH}"
 ENV GO111MODULE=on
 ENV CGO_ENABLED=1
-ENV GOOS=linux
-ENV GOARCH=arm64
 
 WORKDIR /go/src
 

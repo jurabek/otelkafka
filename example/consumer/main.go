@@ -4,14 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"github.com/jurabek/otelkafka"
-	"github.com/jurabek/otelkafka/example"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"log"
 	"os"
 	"os/signal"
+
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	"github.com/jurabek/otelkafka"
+	"github.com/jurabek/otelkafka/example"
+	"github.com/jurabek/otelkafka/metrics"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 func main() {
@@ -83,10 +85,10 @@ func main() {
 				// The definition of the statistics JSON
 				// object can be found here:
 				// https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
-				var stats map[string]interface{}
+				var stats metrics.Stats
 				json.Unmarshal([]byte(e.String()), &stats)
 				// write stats into file
-				fmt.Println(e.String())
+				fmt.Println(stats)
 
 			default:
 				fmt.Printf("Ignored %v\n", e)
