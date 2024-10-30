@@ -4,7 +4,7 @@ services:
     hostname: broker
     container_name: broker
     ports:
-      - 9092:9092
+      - "9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
@@ -38,6 +38,14 @@ services:
     environment:
       - KAFKA_CLUSTERS_0_NAME=local
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=broker:29092
+
+  redpanda-console:
+    image: docker.redpanda.com/redpandadata/console:latest
+    container_name: redpanda-console
+    ports:
+      - "9644:8080"
+    environment:
+      KAFKA_BROKERS: broker:29092
 
   consumer:
     build:

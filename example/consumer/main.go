@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -11,9 +10,7 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/jurabek/otelkafka"
 	"github.com/jurabek/otelkafka/example"
-	"github.com/jurabek/otelkafka/metrics"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 func main() {
@@ -27,10 +24,18 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	mp, err := example.InitMeter("consumer-app")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	defer func() {
 		if err := tp.Shutdown(context.Background()); err != nil {
 			log.Printf("Error shutting down tracer provider: %v", err)
 		}
+
+		_ = mp.Shutdown(context.Background())
 	}()
 
 	consumer, err := otelkafka.NewConsumer(&kafka.ConfigMap{
@@ -68,43 +73,16 @@ func main() {
 
 			switch e := ev.(type) {
 			case *kafka.Message:
-
 				parentSpanContext := otel.GetTextMapPropagator().Extract(context.Background(), otelkafka.NewMessageCarrier(e))
 				fmt.Printf("span context: %v\n", parentSpanContext)
-
-				print(parentSpanContext, e)
 
 			case kafka.Error:
 				// Errors should generally be considered as informational, the client will try to automatically recover
 				fmt.Fprintf(os.Stderr, "%% Error: %v\n", e)
-			case *kafka.Stats:
-				// Stats events are emitted as JSON (as string).
-				// Either directly forward the JSON to your
-				// statistics collector, or convert it to a
-				// map to extract fields of interest.
-				// The definition of the statistics JSON
-				// object can be found here:
-				// https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
-				var stats metrics.Stats
-				json.Unmarshal([]byte(e.String()), &stats)
-				// write stats into file
-				fmt.Println(stats)
-
-			default:
-				fmt.Printf("Ignored %v\n", e)
 			}
 		}
 	}
 
 	fmt.Println("Closing consumer")
 	consumer.Close()
-}
-
-func print(ctx context.Context, msg *kafka.Message) {
-	ctx, span := otel.Tracer("kafka_consumer").Start(ctx, "")
-	span.SetAttributes(attribute.String("kafka.msg.key", string(msg.Key)))
-	defer span.End()
-
-	fmt.Printf("%% Message on %s:\n%s\n",
-		msg.TopicPartition, string(msg.Key))
 }

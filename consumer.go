@@ -31,17 +31,11 @@ func NewConsumer(conf *kafka.ConfigMap, opts ...Option) (*Consumer, error) {
 	opts = append(opts, withConfig(conf))
 	cfg := newConfig(opts...)
 
-	var statsEnabled bool
-	var statsMetrics *metrics.TopLevelMetrics
-	if _, err := conf.Get("statistics.interval.ms", ""); err == nil {
-		statsEnabled = true
-		statsMetrics, err = metrics.GetTopLevelMetrics(cfg.Meter)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get top level metrics: %w", err)
-		}
+	statsMetrics, err := metrics.GetTopLevelMetrics(cfg.Meter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get top level metrics: %w", err)
 	}
-
-	return &Consumer{Consumer: c, cfg: cfg, statsEnabled: statsEnabled, metrics: statsMetrics}, nil
+	return &Consumer{Consumer: c, cfg: cfg, statsEnabled: true, metrics: statsMetrics}, nil
 }
 
 // WrapConsumer wraps a kafka.Consumer so that any consumed events are traced.
@@ -64,9 +58,6 @@ func (c *Consumer) Poll(timeoutMs int) (event kafka.Event) {
 		// latest span is stored to be closed when the next message is polled or when the consumer is closed
 		c.prev = span
 	case *kafka.Stats:
-		if !c.statsEnabled {
-			return e
-		}
 		// Stats events are emitted as JSON (as string).
 		// Either directly forward the JSON to your
 		// statistics collector, or convert it to a
@@ -75,10 +66,13 @@ func (c *Consumer) Poll(timeoutMs int) (event kafka.Event) {
 		// object can be found here:
 		// https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
 		var stats metrics.Stats
-		json.Unmarshal([]byte(e.String()), &stats)
-		// write stats into file
-		// metrics.StatsToMetrics(stats, *c.metrics, c.cfg.Meter, metrics.Cfg{})
-
+		err := json.Unmarshal([]byte(e.String()), &stats)
+		if err != nil {
+			fmt.Printf("Failed to unmarshal stats: %v\n", err)
+		} else {
+			//fmt.Println(e.String())
+			metrics.StatsToMetrics(stats, *c.metrics, metrics.Cfg{})
+		}
 	}
 
 	return e

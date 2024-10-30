@@ -39,7 +39,7 @@ func newConfig(opts ...Option) config {
 		opt.apply(&cfg)
 	}
 
-	cfg.MeterProvider.Meter(
+	cfg.Meter = cfg.MeterProvider.Meter(
 		instrumentationName,
 		metric.WithInstrumentationVersion(Version()),
 	)

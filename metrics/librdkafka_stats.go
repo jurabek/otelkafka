@@ -1,6 +1,8 @@
 package metrics
 
 import (
+	"context"
+
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -33,19 +35,22 @@ type Cfg struct {
 	Attributes []attribute.KeyValue
 }
 
-func StatsToMetrics(stats Stats, topLevelMetrics TopLevelMetrics, observer metric.Observer, cfg Cfg) {
-	observer.ObserveInt64(topLevelMetrics.ClientAgeGauge, stats.Age, metric.WithAttributes(cfg.Attributes...))
-	observer.ObserveInt64(topLevelMetrics.ReplyQueueGauge, stats.Replyq, metric.WithAttributes(cfg.Attributes...))
-	observer.ObserveInt64(topLevelMetrics.MsgCountGauge, stats.MsgCnt, metric.WithAttributes(cfg.Attributes...))
-	observer.ObserveInt64(topLevelMetrics.MsgSizeGauge, stats.MsgSize, metric.WithAttributes(cfg.Attributes...))
-	observer.ObserveInt64(topLevelMetrics.RequestsSentTotal, stats.Tx, metric.WithAttributes(cfg.Attributes...))
-	observer.ObserveInt64(topLevelMetrics.RequestSentBytesTotal, stats.TxBytes, metric.WithAttributes(cfg.Attributes...))
-	observer.ObserveInt64(topLevelMetrics.ResponseReceievedTotal, stats.Rx, metric.WithAttributes(cfg.Attributes...))
-	observer.ObserveInt64(topLevelMetrics.ResponseReceievedBytesTotal, stats.RxBytes, metric.WithAttributes(cfg.Attributes...))
-	observer.ObserveInt64(topLevelMetrics.TotalNumberMessagesProduced, stats.Txmsgs, metric.WithAttributes(cfg.Attributes...))
-	observer.ObserveInt64(topLevelMetrics.TotalNumberOfMessagesProducedBytes, stats.TxmsgBytes, metric.WithAttributes(cfg.Attributes...))
-	observer.ObserveInt64(topLevelMetrics.TotalNumberOfMessagesConsumed, stats.Rxmsgs, metric.WithAttributes(cfg.Attributes...))
-	observer.ObserveInt64(topLevelMetrics.TotalNumberOfMessagesConsumedBytes, stats.RxmsgBytes, metric.WithAttributes(cfg.Attributes...))
+func StatsToMetrics(stats Stats, topLevelMetrics TopLevelMetrics, cfg Cfg) {
+	ctx := context.Background()
+
+	topLevelMetrics.ClientAgeGauge.Record(ctx, stats.Age, metric.WithAttributes(cfg.Attributes...))
+	topLevelMetrics.ReplyQueueGauge.Record(ctx, stats.Replyq, metric.WithAttributes(cfg.Attributes...))
+	topLevelMetrics.MsgCountGauge.Record(ctx, stats.MsgCnt, metric.WithAttributes(cfg.Attributes...))
+	topLevelMetrics.MsgSizeGauge.Record(ctx, stats.MsgSize, metric.WithAttributes(cfg.Attributes...))
+
+	topLevelMetrics.RequestsSentTotal.Add(ctx, stats.Tx, metric.WithAttributes(cfg.Attributes...))
+	topLevelMetrics.RequestSentBytesTotal.Add(ctx, stats.TxBytes, metric.WithAttributes(cfg.Attributes...))
+	topLevelMetrics.ResponseReceievedTotal.Add(ctx, stats.Rx, metric.WithAttributes(cfg.Attributes...))
+	topLevelMetrics.ResponseReceievedBytesTotal.Add(ctx, stats.RxBytes, metric.WithAttributes(cfg.Attributes...))
+	topLevelMetrics.TotalNumberMessagesProduced.Add(ctx, stats.Txmsgs, metric.WithAttributes(cfg.Attributes...))
+	topLevelMetrics.TotalNumberOfMessagesProducedBytes.Add(ctx, stats.TxmsgBytes, metric.WithAttributes(cfg.Attributes...))
+	topLevelMetrics.TotalNumberOfMessagesConsumed.Add(ctx, stats.Rxmsgs, metric.WithAttributes(cfg.Attributes...))
+	topLevelMetrics.TotalNumberOfMessagesConsumedBytes.Add(ctx, stats.RxmsgBytes, metric.WithAttributes(cfg.Attributes...))
 }
 
 type Brokers struct {

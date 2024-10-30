@@ -5,10 +5,14 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/prometheus"
+	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"time"
 )
 
 func InitTracer(serviceName string) (*sdktrace.TracerProvider, error) {
@@ -33,4 +37,24 @@ func InitTracer(serviceName string) (*sdktrace.TracerProvider, error) {
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}))
 	return tp, nil
+}
+
+func InitMeter(serviceName string) (*metric.MeterProvider, error) {
+	_, err := prometheus.New()
+	if err != nil {
+		return nil, err
+	}
+	metricExporter, err := stdoutmetric.New(stdoutmetric.WithPrettyPrint())
+	if err != nil {
+		return nil, err
+	}
+
+	meterProvider := metric.NewMeterProvider(
+		metric.WithResource(resource.NewWithAttributes(semconv.SchemaURL,
+			semconv.ServiceName(serviceName),
+		)),
+		metric.WithReader(metric.NewPeriodicReader(metricExporter, metric.WithInterval(3*time.Second))),
+	)
+	otel.SetMeterProvider(meterProvider)
+	return meterProvider, nil
 }
