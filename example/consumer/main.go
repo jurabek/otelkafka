@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/jurabek/otelkafka"
 	"github.com/jurabek/otelkafka/example"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel"
 )
 
@@ -58,9 +60,11 @@ func main() {
 	}
 	fmt.Println("Subscribed to myTopic")
 
+	go serveMetrics()
+
 	// consume messages
 	run := true
-	for run == true {
+	for run {
 		select {
 		case sig := <-signals:
 			fmt.Printf("Caught signal %v: terminating\n", sig)
@@ -85,4 +89,14 @@ func main() {
 
 	fmt.Println("Closing consumer")
 	consumer.Close()
+}
+
+func serveMetrics() {
+	log.Printf("serving metrics at localhost:8999/metrics")
+	http.Handle("/metrics", promhttp.Handler())
+	err := http.ListenAndServe(":8999", nil) //nolint:gosec // Ignoring G114: Use of net/http serve function that has no support for setting timeouts.
+	if err != nil {
+		fmt.Printf("error serving http: %v", err)
+		return
+	}
 }

@@ -54,6 +54,8 @@ services:
     environment:
         KAFKA_SERVER: broker:29092
         KAFKA_TOPIC: test-topic
+    ports:
+      - "8999:8999"
 
   producer:
     build:
@@ -80,3 +82,12 @@ services:
       - "14269:14269"
       - "9411:9411"
     restart: always
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:latest
+    restart: always
+    volumes:
+      - ./prometheus-conf.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"

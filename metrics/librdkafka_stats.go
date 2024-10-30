@@ -38,19 +38,26 @@ type Cfg struct {
 func StatsToMetrics(stats Stats, topLevelMetrics TopLevelMetrics, cfg Cfg) {
 	ctx := context.Background()
 
-	topLevelMetrics.ClientAgeGauge.Record(ctx, stats.Age, metric.WithAttributes(cfg.Attributes...))
-	topLevelMetrics.ReplyQueueGauge.Record(ctx, stats.Replyq, metric.WithAttributes(cfg.Attributes...))
-	topLevelMetrics.MsgCountGauge.Record(ctx, stats.MsgCnt, metric.WithAttributes(cfg.Attributes...))
-	topLevelMetrics.MsgSizeGauge.Record(ctx, stats.MsgSize, metric.WithAttributes(cfg.Attributes...))
+	attributes := []attribute.KeyValue{
+		attribute.String("client_id", stats.ClientID),
+		attribute.String("name", stats.Name),
+		attribute.String("type", stats.Type),
+	}
+	attributes = append(attributes, cfg.Attributes...)
 
-	topLevelMetrics.RequestsSentTotal.Add(ctx, stats.Tx, metric.WithAttributes(cfg.Attributes...))
-	topLevelMetrics.RequestSentBytesTotal.Add(ctx, stats.TxBytes, metric.WithAttributes(cfg.Attributes...))
-	topLevelMetrics.ResponseReceievedTotal.Add(ctx, stats.Rx, metric.WithAttributes(cfg.Attributes...))
-	topLevelMetrics.ResponseReceievedBytesTotal.Add(ctx, stats.RxBytes, metric.WithAttributes(cfg.Attributes...))
-	topLevelMetrics.TotalNumberMessagesProduced.Add(ctx, stats.Txmsgs, metric.WithAttributes(cfg.Attributes...))
-	topLevelMetrics.TotalNumberOfMessagesProducedBytes.Add(ctx, stats.TxmsgBytes, metric.WithAttributes(cfg.Attributes...))
-	topLevelMetrics.TotalNumberOfMessagesConsumed.Add(ctx, stats.Rxmsgs, metric.WithAttributes(cfg.Attributes...))
-	topLevelMetrics.TotalNumberOfMessagesConsumedBytes.Add(ctx, stats.RxmsgBytes, metric.WithAttributes(cfg.Attributes...))
+	topLevelMetrics.ClientAgeGauge.Record(ctx, stats.Age, metric.WithAttributes(attributes...))
+	topLevelMetrics.ReplyQueueGauge.Record(ctx, stats.Replyq, metric.WithAttributes(attributes...))
+	topLevelMetrics.MsgCountGauge.Record(ctx, stats.MsgCnt, metric.WithAttributes(attributes...))
+	topLevelMetrics.MsgSizeGauge.Record(ctx, stats.MsgSize, metric.WithAttributes(attributes...))
+
+	topLevelMetrics.RequestsSentTotal.Record(ctx, stats.Tx, metric.WithAttributes(attributes...))
+	topLevelMetrics.RequestSentBytesTotal.Record(ctx, stats.TxBytes, metric.WithAttributes(attributes...))
+	topLevelMetrics.ResponseReceievedTotal.Record(ctx, stats.Rx, metric.WithAttributes(attributes...))
+	topLevelMetrics.ResponseReceievedBytesTotal.Record(ctx, stats.RxBytes, metric.WithAttributes(attributes...))
+	topLevelMetrics.TotalNumberMessagesProduced.Record(ctx, stats.Txmsgs, metric.WithAttributes(attributes...))
+	topLevelMetrics.TotalNumberOfMessagesProducedBytes.Record(ctx, stats.TxmsgBytes, metric.WithAttributes(attributes...))
+	topLevelMetrics.TotalNumberOfMessagesConsumed.Record(ctx, stats.Rxmsgs, metric.WithAttributes(attributes...))
+	topLevelMetrics.TotalNumberOfMessagesConsumedBytes.Record(ctx, stats.RxmsgBytes, metric.WithAttributes(attributes...))
 }
 
 type Brokers struct {

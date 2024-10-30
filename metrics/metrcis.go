@@ -11,14 +11,14 @@ type TopLevelMetrics struct {
 	ReplyQueueGauge                    metric.Int64Gauge
 	MsgCountGauge                      metric.Int64Gauge
 	MsgSizeGauge                       metric.Int64Gauge
-	RequestsSentTotal                  metric.Int64Counter
-	RequestSentBytesTotal              metric.Int64Counter
-	ResponseReceievedTotal             metric.Int64Counter
-	ResponseReceievedBytesTotal        metric.Int64Counter
-	TotalNumberMessagesProduced        metric.Int64Counter
-	TotalNumberOfMessagesProducedBytes metric.Int64Counter
-	TotalNumberOfMessagesConsumed      metric.Int64Counter
-	TotalNumberOfMessagesConsumedBytes metric.Int64Counter
+	RequestsSentTotal                  metric.Int64Gauge
+	RequestSentBytesTotal              metric.Int64Gauge
+	ResponseReceievedTotal             metric.Int64Gauge
+	ResponseReceievedBytesTotal        metric.Int64Gauge
+	TotalNumberMessagesProduced        metric.Int64Gauge
+	TotalNumberOfMessagesProducedBytes metric.Int64Gauge
+	TotalNumberOfMessagesConsumed      metric.Int64Gauge
+	TotalNumberOfMessagesConsumedBytes metric.Int64Gauge
 }
 
 func GetTopLevelMetrics(meter metric.Meter) (*TopLevelMetrics, error) {
@@ -60,7 +60,7 @@ func GetTopLevelMetrics(meter metric.Meter) (*TopLevelMetrics, error) {
 		return nil, fmt.Errorf("kafka.producer.msg_size failed: %w", err)
 	}
 
-	topLevel.RequestsSentTotal, err = meter.Int64Counter(
+	topLevel.RequestsSentTotal, err = meter.Int64Gauge(
 		"kafka.requests.sent.total",
 		metric.WithDescription("Total number of requests sent to Kafka brokers"),
 	)
@@ -68,7 +68,7 @@ func GetTopLevelMetrics(meter metric.Meter) (*TopLevelMetrics, error) {
 		return nil, fmt.Errorf("kafka.requests.sent.total failed: %w", err)
 	}
 
-	topLevel.RequestSentBytesTotal, err = meter.Int64Counter(
+	topLevel.RequestSentBytesTotal, err = meter.Int64Gauge(
 		"kafka.request.sent.bytes.total",
 		metric.WithDescription("Total number of bytes transmitted to Kafka brokers"),
 	)
@@ -76,7 +76,7 @@ func GetTopLevelMetrics(meter metric.Meter) (*TopLevelMetrics, error) {
 		return nil, fmt.Errorf("kafka.request.sent.bytes.total failed: %w", err)
 	}
 
-	topLevel.ResponseReceievedTotal, err = meter.Int64Counter(
+	topLevel.ResponseReceievedTotal, err = meter.Int64Gauge(
 		"kafka.response.recieved.total",
 		metric.WithDescription("Total number of responses received from Kafka brokers"),
 	)
@@ -84,7 +84,7 @@ func GetTopLevelMetrics(meter metric.Meter) (*TopLevelMetrics, error) {
 		return nil, fmt.Errorf("kafka.response.recieved.total failed: %w", err)
 	}
 
-	topLevel.ResponseReceievedBytesTotal, err = meter.Int64Counter(
+	topLevel.ResponseReceievedBytesTotal, err = meter.Int64Gauge(
 		"kafka.response.recieved.bytes.total",
 		metric.WithDescription("Total number of bytes received from Kafka brokers"),
 	)
@@ -92,7 +92,7 @@ func GetTopLevelMetrics(meter metric.Meter) (*TopLevelMetrics, error) {
 		return nil, fmt.Errorf("kafka.response.recieved.bytes.total failed: %w", err)
 	}
 
-	topLevel.TotalNumberMessagesProduced, err = meter.Int64Counter(
+	topLevel.TotalNumberMessagesProduced, err = meter.Int64Gauge(
 		"kafka.messages.produced.total",
 		metric.WithDescription("Total number of messages transmitted (produced) to Kafka brokers"),
 	)
@@ -100,7 +100,7 @@ func GetTopLevelMetrics(meter metric.Meter) (*TopLevelMetrics, error) {
 		return nil, fmt.Errorf("kafka.messages.produced.total failed: %w", err)
 	}
 
-	topLevel.TotalNumberOfMessagesProducedBytes, err = meter.Int64Counter(
+	topLevel.TotalNumberOfMessagesProducedBytes, err = meter.Int64Gauge(
 		"kafka.messages.produced.bytes",
 		metric.WithDescription("Total number of message bytes (including framing, such as per-Message framing and MessageSet/batch framing) transmitted to Kafka brokers"),
 	)
@@ -108,7 +108,7 @@ func GetTopLevelMetrics(meter metric.Meter) (*TopLevelMetrics, error) {
 		return nil, fmt.Errorf("kafka.messages.produced.bytes failed: %w", err)
 	}
 
-	topLevel.TotalNumberOfMessagesConsumed, err = meter.Int64Counter(
+	topLevel.TotalNumberOfMessagesConsumed, err = meter.Int64Gauge(
 		"kafka.messages.consumed.total",
 		metric.WithDescription("Total number of messages consumed, not including ignored messages (due to offset, etc), from Kafka brokers."),
 	)
@@ -116,7 +116,7 @@ func GetTopLevelMetrics(meter metric.Meter) (*TopLevelMetrics, error) {
 		return nil, fmt.Errorf("kafka.messages.consumed.total failed: %w", err)
 	}
 
-	topLevel.TotalNumberOfMessagesConsumedBytes, err = meter.Int64Counter(
+	topLevel.TotalNumberOfMessagesConsumedBytes, err = meter.Int64Gauge(
 		"kafka.messages.consumed.bytes",
 		metric.WithDescription("Total number of message bytes (including framing) received from Kafka brokers"),
 	)
