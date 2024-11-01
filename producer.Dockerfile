@@ -8,15 +8,14 @@ ENV GOPROXY=direct
 
 WORKDIR /go/src
 
+RUN apk -U add ca-certificates
+RUN apk update && apk upgrade && apk add pkgconf git bash build-base sudo librdkafka-dev
+
 COPY go.mod .
 COPY go.sum .
 RUN go mod download
 
 COPY . .
-
-RUN apk -U add ca-certificates
-RUN apk update && apk upgrade && apk add pkgconf git bash build-base sudo
-RUN apk update && apk add librdkafka-dev
 
 RUN go build -tags musl --ldflags "-extldflags -static" -o producer ./example/producer
 
