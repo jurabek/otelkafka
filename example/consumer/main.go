@@ -50,6 +50,7 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create consumer: %s\n", err)
 		os.Exit(1)
+
 	}
 
 	// subscribe to the topic
@@ -80,10 +81,21 @@ func main() {
 				parentSpanContext := otel.GetTextMapPropagator().Extract(context.Background(), otelkafka.NewMessageCarrier(e))
 				fmt.Printf("span context: %v\n", parentSpanContext)
 
+			case *kafka.Stats:
+				// Stats events are emitted as JSON (as string).
+				// Either directly forward the JSON to your
+				// statistics collector, or convert it to a
+				// map to extract fields of interest.
+				// The definition of the statistics JSON
+				// object can be found here:
+				// https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
+				log.Println(e.String())
+
 			case kafka.Error:
 				// Errors should generally be considered as informational, the client will try to automatically recover
 				fmt.Fprintf(os.Stderr, "%% Error: %v\n", e)
 			}
+
 		}
 	}
 
@@ -96,7 +108,6 @@ func serveMetrics() {
 	http.Handle("/metrics", promhttp.Handler())
 	err := http.ListenAndServe(":8999", nil) //nolint:gosec // Ignoring G114: Use of net/http serve function that has no support for setting timeouts.
 	if err != nil {
-		fmt.Printf("error serving http: %v", err)
-		return
+		log.Fatalf("serving http server failed: %v", err)
 	}
 }

@@ -7,22 +7,36 @@ import (
 )
 
 type TopLevelMetrics struct {
-	ClientAgeGauge                     metric.Int64Gauge
-	ReplyQueueGauge                    metric.Int64Gauge
-	MsgCountGauge                      metric.Int64Gauge
-	MsgSizeGauge                       metric.Int64Gauge
-	RequestsSentTotal                  metric.Int64Gauge
-	RequestSentBytesTotal              metric.Int64Gauge
-	ResponseReceievedTotal             metric.Int64Gauge
-	ResponseReceievedBytesTotal        metric.Int64Gauge
-	TotalNumberMessagesProduced        metric.Int64Gauge
-	TotalNumberOfMessagesProducedBytes metric.Int64Gauge
+	ClientAgeGauge              metric.Int64Gauge
+	ReplyQueueGauge             metric.Int64Gauge
+	MsgCountGauge               metric.Int64Gauge
+	MsgSizeGauge                metric.Int64Gauge
+	RequestsSentTotal           metric.Int64Gauge
+	RequestSentBytesTotal       metric.Int64Gauge
+	ResponseReceievedTotal      metric.Int64Gauge
+	ResponseReceievedBytesTotal metric.Int64Gauge
+}
+
+type ConsumerMetrics struct {
 	TotalNumberOfMessagesConsumed      metric.Int64Gauge
 	TotalNumberOfMessagesConsumedBytes metric.Int64Gauge
 }
 
-func GetTopLevelMetrics(meter metric.Meter) (*TopLevelMetrics, error) {
+type ProducerMetrics struct {
+	TotalNumberOfMessagesProduced      metric.Int64Gauge
+	TotalNumberOfMessagesProducedBytes metric.Int64Gauge
+}
+
+type ClientMetrics struct {
+	TopLevel *TopLevelMetrics
+	Consumer *ConsumerMetrics
+	Producer *ProducerMetrics
+}
+
+func NewClientMetrics(meter metric.Meter) (*ClientMetrics, error) {
 	var topLevel TopLevelMetrics
+	var consumerMetrics ConsumerMetrics
+	var producerMetrics ProducerMetrics
 	var err error
 
 	topLevel.ClientAgeGauge, err = meter.Int64Gauge(
@@ -92,7 +106,7 @@ func GetTopLevelMetrics(meter metric.Meter) (*TopLevelMetrics, error) {
 		return nil, fmt.Errorf("kafka.response.recieved.bytes.total failed: %w", err)
 	}
 
-	topLevel.TotalNumberMessagesProduced, err = meter.Int64Gauge(
+	producerMetrics.TotalNumberOfMessagesProduced, err = meter.Int64Gauge(
 		"kafka.messages.produced.total",
 		metric.WithDescription("Total number of messages transmitted (produced) to Kafka brokers"),
 	)
@@ -100,7 +114,7 @@ func GetTopLevelMetrics(meter metric.Meter) (*TopLevelMetrics, error) {
 		return nil, fmt.Errorf("kafka.messages.produced.total failed: %w", err)
 	}
 
-	topLevel.TotalNumberOfMessagesProducedBytes, err = meter.Int64Gauge(
+	producerMetrics.TotalNumberOfMessagesProducedBytes, err = meter.Int64Gauge(
 		"kafka.messages.produced.bytes",
 		metric.WithDescription("Total number of message bytes (including framing, such as per-Message framing and MessageSet/batch framing) transmitted to Kafka brokers"),
 	)
@@ -108,7 +122,7 @@ func GetTopLevelMetrics(meter metric.Meter) (*TopLevelMetrics, error) {
 		return nil, fmt.Errorf("kafka.messages.produced.bytes failed: %w", err)
 	}
 
-	topLevel.TotalNumberOfMessagesConsumed, err = meter.Int64Gauge(
+	consumerMetrics.TotalNumberOfMessagesConsumed, err = meter.Int64Gauge(
 		"kafka.messages.consumed.total",
 		metric.WithDescription("Total number of messages consumed, not including ignored messages (due to offset, etc), from Kafka brokers."),
 	)
@@ -116,7 +130,7 @@ func GetTopLevelMetrics(meter metric.Meter) (*TopLevelMetrics, error) {
 		return nil, fmt.Errorf("kafka.messages.consumed.total failed: %w", err)
 	}
 
-	topLevel.TotalNumberOfMessagesConsumedBytes, err = meter.Int64Gauge(
+	consumerMetrics.TotalNumberOfMessagesConsumedBytes, err = meter.Int64Gauge(
 		"kafka.messages.consumed.bytes",
 		metric.WithDescription("Total number of message bytes (including framing) received from Kafka brokers"),
 	)
@@ -124,5 +138,11 @@ func GetTopLevelMetrics(meter metric.Meter) (*TopLevelMetrics, error) {
 		return nil, fmt.Errorf("kafka.messages.consumed.bytes failed: %w", err)
 	}
 
-	return &topLevel, nil
+	result := &ClientMetrics{
+		TopLevel: &topLevel,
+		Consumer: &consumerMetrics,
+		Producer: &producerMetrics,
+	}
+
+	return result, nil
 }

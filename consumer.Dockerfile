@@ -3,7 +3,7 @@ FROM golang:1.22-alpine AS builder
 ENV PATH="/go/bin:${PATH}"
 ENV GO111MODULE=on
 ENV CGO_ENABLED=1
-ENV GOPROXY=direct
+ENV GOOS=linux
 
 RUN apk -U add ca-certificates
 RUN apk update && apk upgrade && apk add pkgconf git bash build-base sudo librdkafka-dev

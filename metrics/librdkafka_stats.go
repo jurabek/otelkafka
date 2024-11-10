@@ -35,7 +35,7 @@ type Cfg struct {
 	Attributes []attribute.KeyValue
 }
 
-func StatsToMetrics(stats Stats, topLevelMetrics TopLevelMetrics, cfg Cfg) {
+func StatsToMetrics(stats Stats, m *ClientMetrics, cfg Cfg) {
 	ctx := context.Background()
 
 	attributes := []attribute.KeyValue{
@@ -44,20 +44,22 @@ func StatsToMetrics(stats Stats, topLevelMetrics TopLevelMetrics, cfg Cfg) {
 		attribute.String("type", stats.Type),
 	}
 	attributes = append(attributes, cfg.Attributes...)
+  
+	m.TopLevel.ClientAgeGauge.Record(ctx, stats.Age, metric.WithAttributes(attributes...))
+	m.TopLevel.ReplyQueueGauge.Record(ctx, stats.Replyq, metric.WithAttributes(attributes...))
+	m.TopLevel.MsgCountGauge.Record(ctx, stats.MsgCnt, metric.WithAttributes(attributes...))
+	m.TopLevel.MsgSizeGauge.Record(ctx, stats.MsgSize, metric.WithAttributes(attributes...))
 
-	topLevelMetrics.ClientAgeGauge.Record(ctx, stats.Age, metric.WithAttributes(attributes...))
-	topLevelMetrics.ReplyQueueGauge.Record(ctx, stats.Replyq, metric.WithAttributes(attributes...))
-	topLevelMetrics.MsgCountGauge.Record(ctx, stats.MsgCnt, metric.WithAttributes(attributes...))
-	topLevelMetrics.MsgSizeGauge.Record(ctx, stats.MsgSize, metric.WithAttributes(attributes...))
+	m.TopLevel.RequestsSentTotal.Record(ctx, stats.Tx, metric.WithAttributes(attributes...))
+	m.TopLevel.RequestSentBytesTotal.Record(ctx, stats.TxBytes, metric.WithAttributes(attributes...))
+	m.TopLevel.ResponseReceievedTotal.Record(ctx, stats.Rx, metric.WithAttributes(attributes...))
+	m.TopLevel.ResponseReceievedBytesTotal.Record(ctx, stats.RxBytes, metric.WithAttributes(attributes...))
 
-	topLevelMetrics.RequestsSentTotal.Record(ctx, stats.Tx, metric.WithAttributes(attributes...))
-	topLevelMetrics.RequestSentBytesTotal.Record(ctx, stats.TxBytes, metric.WithAttributes(attributes...))
-	topLevelMetrics.ResponseReceievedTotal.Record(ctx, stats.Rx, metric.WithAttributes(attributes...))
-	topLevelMetrics.ResponseReceievedBytesTotal.Record(ctx, stats.RxBytes, metric.WithAttributes(attributes...))
-	topLevelMetrics.TotalNumberMessagesProduced.Record(ctx, stats.Txmsgs, metric.WithAttributes(attributes...))
-	topLevelMetrics.TotalNumberOfMessagesProducedBytes.Record(ctx, stats.TxmsgBytes, metric.WithAttributes(attributes...))
-	topLevelMetrics.TotalNumberOfMessagesConsumed.Record(ctx, stats.Rxmsgs, metric.WithAttributes(attributes...))
-	topLevelMetrics.TotalNumberOfMessagesConsumedBytes.Record(ctx, stats.RxmsgBytes, metric.WithAttributes(attributes...))
+	m.Producer.TotalNumberOfMessagesProduced.Record(ctx, stats.Txmsgs, metric.WithAttributes(attributes...))
+	m.Producer.TotalNumberOfMessagesProducedBytes.Record(ctx, stats.TxmsgBytes, metric.WithAttributes(attributes...))
+
+	m.Consumer.TotalNumberOfMessagesConsumed.Record(ctx, stats.Rxmsgs, metric.WithAttributes(attributes...))
+	m.Consumer.TotalNumberOfMessagesConsumedBytes.Record(ctx, stats.RxmsgBytes, metric.WithAttributes(attributes...))
 }
 
 type Brokers struct {
@@ -172,12 +174,9 @@ type TestTopic struct {
 	Partitions  Partitions       `json:"partitions"`
 }
 
-type Partitions struct {
-	The0 The1 `json:"0"`
-	The1 The1 `json:"-1"`
-}
+type Partitions map[string]Partition
 
-type The1 struct {
+type Partition struct {
 	Partition            int64  `json:"partition"`
 	Broker               int64  `json:"broker"`
 	Leader               int64  `json:"leader"`

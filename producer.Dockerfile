@@ -4,12 +4,12 @@ ENV PATH="/go/bin:${PATH}"
 ENV GO111MODULE=on
 ENV CGO_ENABLED=1
 ENV GOOS=linux
-ENV GOPROXY=direct
 
-WORKDIR /go/src
 
 RUN apk -U add ca-certificates
 RUN apk update && apk upgrade && apk add pkgconf git bash build-base sudo librdkafka-dev
+
+WORKDIR /go/src
 
 COPY go.mod .
 COPY go.sum .
