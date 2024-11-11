@@ -22,15 +22,26 @@ type ConsumerMetrics struct {
 	TotalNumberOfMessagesConsumedBytes metric.Int64Gauge
 }
 
+type ConsumerGroupMetrics struct {
+	Up              metric.Int64Gauge
+	JoinState       metric.Int64Gauge
+	StateAge        metric.Int64Gauge
+	RebalanceAge    metric.Int64Gauge
+	RebalanceCount  metric.Int64Gauge
+	RebalanceReason metric.Int64Gauge
+	AssignmentSize  metric.Int64Gauge
+}
+
 type ProducerMetrics struct {
 	TotalNumberOfMessagesProduced      metric.Int64Gauge
 	TotalNumberOfMessagesProducedBytes metric.Int64Gauge
 }
 
 type ClientMetrics struct {
-	TopLevel *TopLevelMetrics
-	Consumer *ConsumerMetrics
-	Producer *ProducerMetrics
+	TopLevel             *TopLevelMetrics
+	Consumer             *ConsumerMetrics
+	Producer             *ProducerMetrics
+	ConsumerGroupMetrics *ConsumerGroupMetrics
 }
 
 func NewClientMetrics(meter metric.Meter) (*ClientMetrics, error) {
@@ -138,11 +149,79 @@ func NewClientMetrics(meter metric.Meter) (*ClientMetrics, error) {
 		return nil, fmt.Errorf("kafka.messages.consumed.bytes failed: %w", err)
 	}
 
+	cgrpMetris, err := newConsumerGroupMetrics(meter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create consumer group metrics: %w", err)
+	}
+
 	result := &ClientMetrics{
-		TopLevel: &topLevel,
-		Consumer: &consumerMetrics,
-		Producer: &producerMetrics,
+		TopLevel:             &topLevel,
+		Consumer:             &consumerMetrics,
+		Producer:             &producerMetrics,
+		ConsumerGroupMetrics: cgrpMetris,
 	}
 
 	return result, nil
+}
+
+func newConsumerGroupMetrics(meter metric.Meter) (*ConsumerGroupMetrics, error) {
+	var consumerGroupMetrics ConsumerGroupMetrics
+	var err error
+
+	consumerGroupMetrics.Up, err = meter.Int64Gauge(
+		"kafka.consumer.group.up",
+		metric.WithDescription("Consumer group up"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("kafka.consumer.group.up: %w", err)
+	}
+
+	consumerGroupMetrics.JoinState, err = meter.Int64Gauge(
+		"kafka.consumer.group.join_state",
+		metric.WithDescription("Consumer group join state"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("kafka.consumer.group.join_state: %w", err)
+	}
+
+	consumerGroupMetrics.StateAge, err = meter.Int64Gauge(
+		"kafka.consumer.group.state_age",
+		metric.WithDescription("Consumer group state age"),
+		metric.WithUnit("s"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("kafka.consumer.group.state_age: %w", err)
+	}
+
+	consumerGroupMetrics.RebalanceAge, err = meter.Int64Gauge(
+		"kafka.consumer.group.rebalance_age",
+		metric.WithDescription("Consumer group rebalance age"),
+		metric.WithUnit("s"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("kafka.consumer.group.rebalance_age: %w", err)
+	}
+	consumerGroupMetrics.RebalanceCount, err = meter.Int64Gauge(
+		"kafka.consumer.group.rebalance_count",
+		metric.WithDescription("Consumer group rebalance count"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("kafka.consumer.group.rebalance_count: %w", err)
+	}
+	consumerGroupMetrics.RebalanceReason, err = meter.Int64Gauge(
+		"kafka.consumer.group.rebalance_reason",
+		metric.WithDescription("Consumer group rebalance reason"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("kafka.consumer.group.rebalance_reason: %w", err)
+	}
+	consumerGroupMetrics.AssignmentSize, err = meter.Int64Gauge(
+		"kafka.consumer.group.assignment_size",
+		metric.WithDescription("Consumer group assignment size"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("kafka.consumer.group.assignment_size: %w", err)
+	}
+
+	return &consumerGroupMetrics, nil
 }

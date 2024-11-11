@@ -1,10 +1,7 @@
 package metrics
 
 import (
-	"context"
-
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
 )
 
 type Stats struct {
@@ -28,38 +25,11 @@ type Stats struct {
 	RxmsgBytes int64 `json:"rxmsg_bytes"`
 	// Brokers          Brokers `json:"brokers"`
 	// Topics           Topics  `json:"topics"`
-	// Cgrp             Cgrp    `json:"cgrp"`
+	Cgrp Cgrp `json:"cgrp"`
 }
 
 type Cfg struct {
 	Attributes []attribute.KeyValue
-}
-
-func StatsToMetrics(stats Stats, m *ClientMetrics, cfg Cfg) {
-	ctx := context.Background()
-
-	attributes := []attribute.KeyValue{
-		attribute.String("client_id", stats.ClientID),
-		attribute.String("name", stats.Name),
-		attribute.String("type", stats.Type),
-	}
-	attributes = append(attributes, cfg.Attributes...)
-  
-	m.TopLevel.ClientAgeGauge.Record(ctx, stats.Age, metric.WithAttributes(attributes...))
-	m.TopLevel.ReplyQueueGauge.Record(ctx, stats.Replyq, metric.WithAttributes(attributes...))
-	m.TopLevel.MsgCountGauge.Record(ctx, stats.MsgCnt, metric.WithAttributes(attributes...))
-	m.TopLevel.MsgSizeGauge.Record(ctx, stats.MsgSize, metric.WithAttributes(attributes...))
-
-	m.TopLevel.RequestsSentTotal.Record(ctx, stats.Tx, metric.WithAttributes(attributes...))
-	m.TopLevel.RequestSentBytesTotal.Record(ctx, stats.TxBytes, metric.WithAttributes(attributes...))
-	m.TopLevel.ResponseReceievedTotal.Record(ctx, stats.Rx, metric.WithAttributes(attributes...))
-	m.TopLevel.ResponseReceievedBytesTotal.Record(ctx, stats.RxBytes, metric.WithAttributes(attributes...))
-
-	m.Producer.TotalNumberOfMessagesProduced.Record(ctx, stats.Txmsgs, metric.WithAttributes(attributes...))
-	m.Producer.TotalNumberOfMessagesProducedBytes.Record(ctx, stats.TxmsgBytes, metric.WithAttributes(attributes...))
-
-	m.Consumer.TotalNumberOfMessagesConsumed.Record(ctx, stats.Rxmsgs, metric.WithAttributes(attributes...))
-	m.Consumer.TotalNumberOfMessagesConsumedBytes.Record(ctx, stats.RxmsgBytes, metric.WithAttributes(attributes...))
 }
 
 type Brokers struct {
