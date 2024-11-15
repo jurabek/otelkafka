@@ -73,6 +73,14 @@ func WithTracerProvider(provider trace.TracerProvider) Option {
 	})
 }
 
+func WithMeterProvider(meterProvider metric.MeterProvider) Option {
+	return optionFunc(func(cfg *config) {
+		if meterProvider != nil {
+			cfg.MeterProvider = meterProvider
+		}
+	})
+}
+
 // WithPropagators specifies propagators to use for extracting
 // information from the HTTP requests. If none are specified, global
 // ones will be used.
