@@ -78,8 +78,7 @@ func main() {
 
 			switch e := ev.(type) {
 			case *kafka.Message:
-				parentSpanContext := otel.GetTextMapPropagator().Extract(context.Background(), otelkafka.NewMessageCarrier(e))
-				fmt.Printf("span context: %v\n", parentSpanContext)
+				_ = otel.GetTextMapPropagator().Extract(context.Background(), otelkafka.NewMessageCarrier(e))
 
 			case *kafka.Stats:
 				// Stats events are emitted as JSON (as string).

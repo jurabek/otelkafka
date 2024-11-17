@@ -19,6 +19,7 @@ type Consumer struct {
 	cfg  config
 	prev trace.Span
 
+	// when consumer set statistics.interval.ms we enable mapping librdkafka stats into OTEL metrics
 	statsEnabled bool
 	metrics      *metrics.ConsumerClientMetrics
 }
@@ -31,11 +32,15 @@ func NewConsumer(conf *kafka.ConfigMap, opts ...Option) (*Consumer, error) {
 	opts = append(opts, withConfig(conf))
 	cfg := newConfig(opts...)
 
-	statsMetrics, err := metrics.NewConsumerClientMetrics(cfg.Meter)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get top level metrics: %w", err)
+	if si, err := conf.Get("statistics.interval.ms", 0); err == nil && si != 0 {
+		statsMetrics, err := metrics.NewConsumerClientMetrics(cfg.Meter)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get top level metrics: %w", err)
+		}
+		return &Consumer{Consumer: c, cfg: cfg, statsEnabled: true, metrics: statsMetrics}, nil
 	}
-	return &Consumer{Consumer: c, cfg: cfg, statsEnabled: true, metrics: statsMetrics}, nil
+
+	return &Consumer{Consumer: c, cfg: cfg}, nil
 }
 
 // WrapConsumer wraps a kafka.Consumer so that any consumed events are traced.
@@ -59,19 +64,21 @@ func (c *Consumer) Poll(timeoutMs int) (event kafka.Event) {
 		// latest span is stored to be closed when the next message is polled or when the consumer is closed
 		c.prev = span
 	case *kafka.Stats:
-		// Stats events are emitted as JSON (as string).
-		// Either directly forward the JSON to your
-		// statistics collector, or convert it to a
-		// map to extract fields of interest.
-		// The definition of the statistics JSON
-		// object can be found here:
-		// https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
-		var stats metrics.Stats
-		err := json.Unmarshal([]byte(e.String()), &stats)
-		if err != nil {
-			fmt.Printf("Failed to unmarshal stats: %v\n", err)
-		} else {
-			metrics.ConsumerStatsToMetrics(context.Background(), stats, c.metrics, metrics.Cfg{})
+		if c.statsEnabled {
+			// Stats events are emitted as JSON (as string).
+			// Either directly forward the JSON to your
+			// statistics collector, or convert it to a
+			// map to extract fields of interest.
+			// The definition of the statistics JSON
+			// object can be found here:
+			// https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
+			var stats metrics.Stats
+			err := json.Unmarshal([]byte(e.String()), &stats)
+			if err != nil {
+				fmt.Printf("Failed to unmarshal stats: %v\n", err)
+			} else {
+				metrics.ConsumerStatsToMetrics(context.Background(), stats, c.metrics, metrics.Cfg{})
+			}
 		}
 	}
 
