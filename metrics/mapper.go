@@ -7,9 +7,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
-func StatsToMetrics(stats Stats, m *ClientMetrics, cfg Cfg) {
-	ctx := context.Background()
-
+func ConsumerStatsToMetrics(ctx context.Context, stats Stats, m *ConsumerClientMetrics, cfg Cfg) {
 	attributes := []attribute.KeyValue{
 		attribute.String("consumer_client_id", stats.ClientID),
 		attribute.String("consumer_name", stats.Name),
@@ -19,21 +17,38 @@ func StatsToMetrics(stats Stats, m *ClientMetrics, cfg Cfg) {
 
 	m.TopLevel.ClientAgeGauge.Record(ctx, stats.Age, metric.WithAttributes(attributes...))
 	m.TopLevel.ReplyQueueGauge.Record(ctx, stats.Replyq, metric.WithAttributes(attributes...))
-	m.TopLevel.MsgCountGauge.Record(ctx, stats.MsgCnt, metric.WithAttributes(attributes...))
-	m.TopLevel.MsgSizeGauge.Record(ctx, stats.MsgSize, metric.WithAttributes(attributes...))
 
 	m.TopLevel.RequestsSentTotal.Record(ctx, stats.Tx, metric.WithAttributes(attributes...))
 	m.TopLevel.RequestSentBytesTotal.Record(ctx, stats.TxBytes, metric.WithAttributes(attributes...))
 	m.TopLevel.ResponseReceievedTotal.Record(ctx, stats.Rx, metric.WithAttributes(attributes...))
 	m.TopLevel.ResponseReceievedBytesTotal.Record(ctx, stats.RxBytes, metric.WithAttributes(attributes...))
 
-	m.Producer.TotalNumberOfMessagesProduced.Record(ctx, stats.Txmsgs, metric.WithAttributes(attributes...))
-	m.Producer.TotalNumberOfMessagesProducedBytes.Record(ctx, stats.TxmsgBytes, metric.WithAttributes(attributes...))
-
 	m.Consumer.TotalNumberOfMessagesConsumed.Record(ctx, stats.Rxmsgs, metric.WithAttributes(attributes...))
 	m.Consumer.TotalNumberOfMessagesConsumedBytes.Record(ctx, stats.RxmsgBytes, metric.WithAttributes(attributes...))
 
 	recordConsumerGroupMetrics(ctx, stats.Cgrp, m.ConsumerGroupMetrics, attributes)
+}
+
+func ProducerStatsToMetrics(ctx context.Context, stats Stats, m *ProducerClientMetrics, cfg Cfg) {
+	attributes := []attribute.KeyValue{
+		attribute.String("producer_client_id", stats.ClientID),
+		attribute.String("producer_name", stats.Name),
+		attribute.String("type", stats.Type),
+	}
+	attributes = append(attributes, cfg.Attributes...)
+
+	m.TopLevel.ClientAgeGauge.Record(ctx, stats.Age, metric.WithAttributes(attributes...))
+	m.TopLevel.ReplyQueueGauge.Record(ctx, stats.Replyq, metric.WithAttributes(attributes...))
+
+	m.TopLevel.RequestsSentTotal.Record(ctx, stats.Tx, metric.WithAttributes(attributes...))
+	m.TopLevel.RequestSentBytesTotal.Record(ctx, stats.TxBytes, metric.WithAttributes(attributes...))
+	m.TopLevel.ResponseReceievedTotal.Record(ctx, stats.Rx, metric.WithAttributes(attributes...))
+	m.TopLevel.ResponseReceievedBytesTotal.Record(ctx, stats.RxBytes, metric.WithAttributes(attributes...))
+
+	m.Producer.ProducerMsgQueueCountGauge.Record(ctx, stats.MsgCnt, metric.WithAttributes(attributes...))
+	m.Producer.ProducerMsgQueueSizeGauge.Record(ctx, stats.MsgSize, metric.WithAttributes(attributes...))
+	m.Producer.TotalNumberOfMessagesProduced.Record(ctx, stats.Txmsgs, metric.WithAttributes(attributes...))
+	m.Producer.TotalNumberOfMessagesProducedBytes.Record(ctx, stats.TxmsgBytes, metric.WithAttributes(attributes...))
 }
 
 func recordConsumerGroupMetrics(ctx context.Context, s Cgrp, cm *ConsumerGroupMetrics, attr []attribute.KeyValue) {

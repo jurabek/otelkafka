@@ -20,7 +20,7 @@ type Consumer struct {
 	prev trace.Span
 
 	statsEnabled bool
-	metrics      *metrics.ClientMetrics
+	metrics      *metrics.ConsumerClientMetrics
 }
 
 func NewConsumer(conf *kafka.ConfigMap, opts ...Option) (*Consumer, error) {
@@ -31,7 +31,7 @@ func NewConsumer(conf *kafka.ConfigMap, opts ...Option) (*Consumer, error) {
 	opts = append(opts, withConfig(conf))
 	cfg := newConfig(opts...)
 
-	statsMetrics, err := metrics.NewClientMetrics(cfg.Meter)
+	statsMetrics, err := metrics.NewConsumerClientMetrics(cfg.Meter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get top level metrics: %w", err)
 	}
@@ -71,8 +71,7 @@ func (c *Consumer) Poll(timeoutMs int) (event kafka.Event) {
 		if err != nil {
 			fmt.Printf("Failed to unmarshal stats: %v\n", err)
 		} else {
-			//fmt.Println(e.String())
-			metrics.StatsToMetrics(stats, c.metrics, metrics.Cfg{})
+			metrics.ConsumerStatsToMetrics(context.Background(), stats, c.metrics, metrics.Cfg{})
 		}
 	}
 
