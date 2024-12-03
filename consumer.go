@@ -30,7 +30,7 @@ func NewConsumer(conf *kafka.ConfigMap, opts ...Option) (*Consumer, error) {
 		return nil, err
 	}
 	opts = append(opts, withConfig(conf))
-	cfg := newConfig(opts...)
+	cfg := newConfig("consumer", opts...)
 
 	if si, err := conf.Get("statistics.interval.ms", 0); err == nil && si != 0 {
 		statsMetrics, err := metrics.NewConsumerClientMetrics(cfg.Meter)
@@ -47,7 +47,7 @@ func NewConsumer(conf *kafka.ConfigMap, opts ...Option) (*Consumer, error) {
 func WrapConsumer(c *kafka.Consumer, opts ...Option) *Consumer {
 	wrapped := &Consumer{
 		Consumer: c,
-		cfg:      newConfig(opts...),
+		cfg:      newConfig("consumer", opts...),
 	}
 	return wrapped
 }
@@ -64,21 +64,22 @@ func (c *Consumer) Poll(timeoutMs int) (event kafka.Event) {
 		// latest span is stored to be closed when the next message is polled or when the consumer is closed
 		c.prev = span
 	case *kafka.Stats:
-		if c.statsEnabled {
-			// Stats events are emitted as JSON (as string).
-			// Either directly forward the JSON to your
-			// statistics collector, or convert it to a
-			// map to extract fields of interest.
-			// The definition of the statistics JSON
-			// object can be found here:
-			// https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
-			var stats metrics.Stats
-			err := json.Unmarshal([]byte(e.String()), &stats)
-			if err != nil {
-				fmt.Printf("Failed to unmarshal stats: %v\n", err)
-			} else {
-				metrics.ConsumerStatsToMetrics(context.Background(), stats, c.metrics, metrics.Cfg{})
-			}
+		if !c.statsEnabled {
+			break
+		}
+		// Stats events are emitted as JSON (as string).
+		// Either directly forward the JSON to your
+		// statistics collector, or convert it to a
+		// map to extract fields of interest.
+		// The definition of the statistics JSON
+		// object can be found here:
+		// https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
+		var stats metrics.Stats
+		err := json.Unmarshal([]byte(e.String()), &stats)
+		if err != nil {
+			fmt.Printf("Failed to unmarshal stats: %v\n", err)
+		} else {
+			metrics.ConsumerStatsToMetrics(context.Background(), stats, c.metrics, metrics.Cfg{})
 		}
 	}
 

@@ -2,9 +2,11 @@ package otelkafka
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	"github.com/jurabek/otelkafka/metrics"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
@@ -15,6 +17,9 @@ import (
 type Producer struct {
 	*kafka.Producer
 	cfg config
+
+	statsEnabled bool
+	metrics      *metrics.ProducerClientMetrics
 }
 
 func NewProducer(conf *kafka.ConfigMap, opts ...Option) (*Producer, error) {
@@ -23,7 +28,16 @@ func NewProducer(conf *kafka.ConfigMap, opts ...Option) (*Producer, error) {
 		return nil, err
 	}
 	opts = append(opts, withConfig(conf))
-	cfg := newConfig(opts...)
+	cfg := newConfig("producer", opts...)
+
+	if si, err := conf.Get("statistics.interval.ms", 0); err == nil && si != 0 {
+		statsMetrics, err := metrics.NewProducerClientMetrics(cfg.Meter)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get top level metrics: %w", err)
+		}
+		return &Producer{Producer: p, cfg: cfg, statsEnabled: true, metrics: statsMetrics}, nil
+	}
+
 	return &Producer{Producer: p, cfg: cfg}, nil
 }
 
@@ -38,10 +52,23 @@ func (p *Producer) Produce(msg *kafka.Message, deliveryChan chan kafka.Event) er
 		deliveryChan = make(chan kafka.Event)
 		go func() {
 			evt := <-deliveryChan
-			if resMsg, ok := evt.(*kafka.Message); ok {
-				if err := resMsg.TopicPartition.Error; err != nil {
-					span.RecordError(resMsg.TopicPartition.Error)
+			switch e := evt.(type) {
+			case *kafka.Message:
+				if err := e.TopicPartition.Error; err != nil {
+					span.RecordError(e.TopicPartition.Error)
 					span.SetStatus(codes.Error, err.Error())
+				}
+			case *kafka.Stats:
+				if !p.statsEnabled {
+					break
+				}
+
+				var stats metrics.Stats
+				err := json.Unmarshal([]byte(e.String()), &stats)
+				if err != nil {
+					fmt.Printf("Failed to unmarshal stats: %v\n", err)
+				} else {
+					metrics.ProducerStatsToMetrics(context.Background(), stats, p.metrics, metrics.Cfg{})
 				}
 			}
 			span.End()

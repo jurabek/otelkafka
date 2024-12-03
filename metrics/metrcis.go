@@ -63,7 +63,7 @@ func NewConsumerClientMetrics(meter metric.Meter) (*ConsumerClientMetrics, error
 		return nil, fmt.Errorf("kafka.messages.consumed.bytes failed: %w", err)
 	}
 
-	cgrpMetris, err := newConsumerGroupMetrics(meter)
+	consumerGroupMetrics, err := newConsumerGroupMetrics(meter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create consumer group metrics: %w", err)
 	}
@@ -75,7 +75,7 @@ func NewConsumerClientMetrics(meter metric.Meter) (*ConsumerClientMetrics, error
 	result := &ConsumerClientMetrics{
 		TopLevel:             topLevel,
 		Consumer:             &consumerMetrics,
-		ConsumerGroupMetrics: cgrpMetris,
+		ConsumerGroupMetrics: consumerGroupMetrics,
 	}
 
 	return result, nil
@@ -199,9 +199,14 @@ type ProducerClientMetrics struct {
 	Producer *ProducerMetrics
 }
 
-func NewProducerClientMetrics(meter metric.Meter) (*ProducerMetrics, error) {
+func NewProducerClientMetrics(meter metric.Meter) (*ProducerClientMetrics, error) {
 	var producerMetrics ProducerMetrics
 	var err error
+
+	topLevel, err := NewTopLevelMetrics(meter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create top level metrics: %w", err)
+	}
 	producerMetrics.ProducerMsgQueueCountGauge, err = meter.Int64Gauge(
 		"kafka.producer.queue.msg_count",
 		metric.WithDescription("Current number of messages in producer queues"),
@@ -210,7 +215,6 @@ func NewProducerClientMetrics(meter metric.Meter) (*ProducerMetrics, error) {
 	if err != nil {
 		return nil, fmt.Errorf("kafka.producer.queue.msg_count failed: %w", err)
 	}
-
 	producerMetrics.ProducerMsgQueueSizeGauge, err = meter.Int64Gauge(
 		"kafka.producer.queue.msg_size",
 		metric.WithDescription("Current total size of messages in producer queues"),
@@ -219,7 +223,6 @@ func NewProducerClientMetrics(meter metric.Meter) (*ProducerMetrics, error) {
 	if err != nil {
 		return nil, fmt.Errorf("kafka.producer.queue.msg_size failed: %w", err)
 	}
-
 	producerMetrics.TotalNumberOfMessagesProduced, err = meter.Int64Gauge(
 		"kafka.messages.produced.total",
 		metric.WithDescription("Total number of messages transmitted (produced) to Kafka brokers"),
@@ -227,7 +230,6 @@ func NewProducerClientMetrics(meter metric.Meter) (*ProducerMetrics, error) {
 	if err != nil {
 		return nil, fmt.Errorf("kafka.messages.produced.total failed: %w", err)
 	}
-
 	producerMetrics.TotalNumberOfMessagesProducedBytes, err = meter.Int64Gauge(
 		"kafka.messages.produced.bytes",
 		metric.WithDescription("Total number of message bytes (including framing, such as per-Message framing and MessageSet/batch framing) transmitted to Kafka brokers"),
@@ -235,6 +237,8 @@ func NewProducerClientMetrics(meter metric.Meter) (*ProducerMetrics, error) {
 	if err != nil {
 		return nil, fmt.Errorf("kafka.messages.produced.bytes failed: %w", err)
 	}
-
-	return &producerMetrics, nil
+	return &ProducerClientMetrics{
+		TopLevel: topLevel,
+		Producer: &producerMetrics,
+	}, nil
 }

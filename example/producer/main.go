@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
+	"time"
+
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/jurabek/otelkafka"
 	"github.com/jurabek/otelkafka/example"
 	"go.opentelemetry.io/otel"
-	"log"
-	"os"
-	"time"
 )
 
 func main() {
@@ -26,7 +27,10 @@ func main() {
 	bootstrapServers := os.Getenv("KAFKA_SERVER")
 	topic := os.Getenv("KAFKA_TOPIC")
 
-	p, err := otelkafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": bootstrapServers})
+	p, err := otelkafka.NewProducer(&kafka.ConfigMap{
+		"bootstrap.servers":      bootstrapServers,
+		"statistics.interval.ms": 5000,
+	})
 
 	if err != nil {
 		fmt.Printf("Failed to create producer: %s\n", err)

@@ -29,7 +29,7 @@ type config struct {
 }
 
 // newConfig returns a config with all Options set.
-func newConfig(opts ...Option) config {
+func newConfig(instruments string, opts ...Option) config {
 	cfg := config{
 		Propagators:    otel.GetTextMapPropagator(),
 		TracerProvider: otel.GetTracerProvider(),
@@ -40,12 +40,12 @@ func newConfig(opts ...Option) config {
 	}
 
 	cfg.Meter = cfg.MeterProvider.Meter(
-		instrumentationName,
+		instrumentationName+"/"+instruments,
 		metric.WithInstrumentationVersion(Version()),
 	)
 
 	cfg.Tracer = cfg.TracerProvider.Tracer(
-		instrumentationName,
+		instrumentationName+"/"+instruments,
 		trace.WithInstrumentationVersion(Version()),
 	)
 
