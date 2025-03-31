@@ -57,9 +57,13 @@ func NewProducer(conf *kafka.ConfigMap, opts ...Option) (*Producer, error) {
 
 // Produce calls the underlying Producer.Produce and traces the request.
 func (p *Producer) Produce(msg *kafka.Message, deliveryChan chan kafka.Event) error {
+	return p.ProduceWithContext(context.Background(), msg, deliveryChan)
+}
+
+func (p *Producer) ProduceWithContext(context context.Context, msg *kafka.Message, deliveryChan chan kafka.Event) error {
 	// If there's a span context in the message, use that as the parent context.
 	carrier := NewMessageCarrier(msg)
-	ctx := p.cfg.Propagators.Extract(context.Background(), carrier)
+	ctx := p.cfg.Propagators.Extract(context, carrier)
 	start := time.Now()
 
 	lowCardinalityAttrs := []attribute.KeyValue{
