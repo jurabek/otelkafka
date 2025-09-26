@@ -24,6 +24,7 @@ type config struct {
 	bootstrapServers string
 
 	attributeInjectFunc func(msg *kafka.Message) []attribute.KeyValue
+	messageCarrierFunc  func(*kafka.Message) propagation.TextMapCarrier
 }
 
 // newConfig returns a config with all Options set.
@@ -32,6 +33,9 @@ func newConfig(opts ...Option) config {
 		Propagators:    otel.GetTextMapPropagator(),
 		TracerProvider: otel.GetTracerProvider(),
 		MeterProvider:  otel.GetMeterProvider(),
+		messageCarrierFunc: func(msg *kafka.Message) propagation.TextMapCarrier {
+			return NewMessageCarrier(msg)
+		},
 	}
 	for _, opt := range opts {
 		opt.apply(&cfg)
@@ -82,6 +86,12 @@ func WithPropagators(propagators propagation.TextMapPropagator) Option {
 		if propagators != nil {
 			cfg.Propagators = propagators
 		}
+	})
+}
+
+func WithMessageCarrier(carrier func(*kafka.Message) propagation.TextMapCarrier) Option {
+	return optionFunc(func(cfg *config) {
+		cfg.messageCarrierFunc = carrier
 	})
 }
 

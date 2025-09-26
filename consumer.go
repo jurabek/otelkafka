@@ -57,7 +57,6 @@ func NewConsumer(conf *kafka.ConfigMap, opts ...Option) (*Consumer, error) {
 
 // WrapConsumer wraps a kafka.Consumer so that any consumed events are traced.
 func WrapConsumer(c *kafka.Consumer, opts ...Option) (*Consumer, error) {
-
 	cfg := newConfig(opts...)
 	meter := cfg.MeterProvider.Meter("kafka_consumer")
 
@@ -155,7 +154,7 @@ func (c *Consumer) Close() error {
 }
 
 func (c *Consumer) startSpan(msg *kafka.Message, lowCardinalityAttrs []attribute.KeyValue, highCardinalityAttrs []attribute.KeyValue) (context.Context, trace.Span) {
-	carrier := NewMessageCarrier(msg)
+	carrier := c.cfg.messageCarrierFunc(msg)
 	parentSpanContext := c.cfg.Propagators.Extract(context.Background(), carrier)
 
 	if c.cfg.attributeInjectFunc != nil {
