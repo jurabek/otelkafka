@@ -1,8 +1,7 @@
 module github.com/jurabek/otelkafka
 
 go 1.22.7
-
-toolchain go1.22.10
+toolchain go1.24.1
 
 require (
 	github.com/confluentinc/confluent-kafka-go/v2 v2.8.0
@@ -20,9 +19,9 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.33.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.34.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.34.0 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/crypto v0.35.0 // indirect
 	golang.org/x/oauth2 v0.24.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 	google.golang.org/protobuf v1.36.3 // indirect
 )
